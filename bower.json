@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "name": "purescript-dual-tree",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output",
+    "dist"
+  ],
+  "dependencies": {
+      "purescript-console": "^3.0.0"
+      , "purescript-eff": "^3.1.0"
+      , "purescript-generics": "^4.0.0"
+      , "purescript-tuples": "^4.0.0"
+      , "purescript-lists": "^4.0.0"
+      , "purescript-quickcheck": "^4.0.0"
+  }
+}
