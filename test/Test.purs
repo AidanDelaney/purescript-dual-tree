@@ -1,17 +1,15 @@
 module Test.Main where
 
-import           Prelude
+import           Prelude (class Semigroup, unit, ($), (<$>), (==))
 import           Data.Monoid.Action
 import           Data.Maybe(Maybe(..))
-import           Data.NonEmpty ((:|), singleton)
-import           Control.Applicative ((<$>))
-import           Data.Generic.Rep (Sum, Product)
+import           Data.Array(singleton)
+import           Data.NonEmpty((:|))
+import           Control.Apply (lift2)
 import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree)
-import           Data.Unit
-import           Data.Semigroup (class Semigroup)
-import           Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary)
-import           Test.QuickCheck.Gen (Gen, vectorOf, randomSample', sized, uniform, oneOf)
-import           Test.QuickCheck hiding ((===))
+import           Test.QuickCheck.Arbitrary (arbitrary)
+import           Test.QuickCheck.Gen (Gen,  oneOf)
+import           Test.QuickCheck (quickCheck)
 
 newtype U = Sum Int
 newtype D = Product Int
@@ -30,10 +28,19 @@ data DUALTreeExpr d u a l =
 mkU :: Gen U
 mkU = Sum <$> (arbitrary :: Gen Int)
 
-mkLeaf :: forall d a l. Gen (DUALTreeExpr d U a l)
-mkLeaf = ELeafU <$> mkU
+mkD :: Gen D
+mkD = Product <$> (arbitrary :: Gen Int)
 
-mkTreeExpr :: forall d u a l. Int -> Gen (DUALTreeExpr d U a l)
+{-[Sum <$> (arbitrary :: Gen Int)
+                      , ]-}
+
+mkLeaf :: forall d a. Gen (DUALTreeExpr d U a Int)
+mkLeaf = oneOf $ l :| singleton lu
+  where
+    l = (lift2 ELeaf mkU (arbitrary :: Gen Int))
+    lu = (ELeafU <$> mkU)
+
+mkTreeExpr :: forall d a. Int -> Gen (DUALTreeExpr d U a Int)
 mkTreeExpr 0 = mkLeaf
 mkTreeExpr n = mkLeaf
 
