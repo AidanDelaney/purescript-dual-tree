@@ -15,5 +15,6 @@
       , "purescript-tuples": "^4.0.0"
       , "purescript-lists": "^4.0.0"
       , "purescript-quickcheck": "^4.0.0"
+      , "purescript-foldable-traversable": "^3.3.1"
   }
 }

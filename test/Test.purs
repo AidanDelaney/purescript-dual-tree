@@ -1,20 +1,38 @@
 module Test.Main where
 
-import           Prelude (class Semigroup, unit, ($), (<$>), (==))
-import           Data.Monoid.Action
-import           Data.Maybe(Maybe(..))
+import           Prelude --(class Semigroup, unit, ($), (<$>), (==), append)
+import           Data.Monoid.Action (class Action)
+import           Data.Monoid.Additive
+import           Data.Monoid.Multiplicative
+import           Data.Maybe(Maybe(..), fromMaybe)
 import           Data.Array(singleton)
 import           Data.NonEmpty((:|))
+import           Data.Tuple (Tuple(..))
+import           Data.Semiring(class Semiring)
 import           Control.Apply (lift2)
-import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree)
+import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree, applyUpre)
 import           Test.QuickCheck.Arbitrary (arbitrary)
 import           Test.QuickCheck.Gen (Gen,  oneOf)
 import           Test.QuickCheck (quickCheck)
 
-newtype U = Sum Int
-newtype D = Product Int
+newtype U = Additive Int
+derive instance eqU :: Eq (U)
 
-data T = DUALTree D U Boolean Boolean
+instance semigroupU :: Semigroup (U) where
+  append (Additive a) (Additive b) = Additive (a + b)
+
+instance actionU :: Action U Int where
+  act (Additive i) s = i + s
+
+newtype D = Multiplicative Int
+
+instance actionD :: Action D Int where
+  act (Multiplicative i) s = i * s
+
+instance actionDU :: Action D U where
+  act (Multiplicative i) (Additive j) = Additive (i * j)
+
+type T = DUALTree D U Boolean Boolean
 
 data DUALTreeExpr d u a l =
     EEmpty
@@ -26,10 +44,10 @@ data DUALTreeExpr d u a l =
 --  deriving (Show, Typeable)
 
 mkU :: Gen U
-mkU = Sum <$> (arbitrary :: Gen Int)
+mkU = Additive <$> (arbitrary :: Gen Int)
 
 mkD :: Gen D
-mkD = Product <$> (arbitrary :: Gen Int)
+mkD = Multiplicative <$> (arbitrary :: Gen Int)
 
 {-[Sum <$> (arbitrary :: Gen Int)
                       , ]-}
@@ -58,6 +76,15 @@ buildTree (ELeafU u)   = leafU u
 
 prop_leaf_u :: Int -> Boolean
 prop_leaf_u u = getU (leaf u unit) == Just u
+
+prop_leafU_u :: U -> Boolean
+prop_leafU_u u = getU (leafU u) == Just u
+
+prop_applyUpre :: forall d a l. U -> T -> Boolean
+prop_applyUpre u t = getU (applyUpre u t) == Just u -- Just (u `append` fromMaybe empty (getU t))
+
+--prop_applyUpost :: U -> T -> Boolean
+--prop_applyUpost u t = getU (applyUpost u t) == Just (fromMaybe mempty (getU t) `append` u)
 
 
 main = do
