@@ -115,9 +115,9 @@ getU t = map fst $ nonEmpty t
 
 -- | \"Pull\" the root @u@ annotation out into a tuple.
 pullU :: forall d u a l. Semigroup u => Action d u => DUALTreeNE d u a l -> DUALTreeU d u a l
-pullU (Leaf u l) = wrap (u, Leaf u l)
-pullU (Leaf u l) = pack (u, Leaf u l)
-pullU (LeafU u)  = pack (u, LeafU u)
+pullU (Leaf u l) = wrap $ Tuple (u  (Leaf u l))
+pullU (Leaf u l) = pack $ Tuple (u  (Leaf u l))
+pullU (LeafU u)  = pack $ Tuple (u  (LeafU u))
 -- pullU (Concat ts)                  = pack (fold1 . NEL.map (fst . unpack) $ (Concat ts), t)
 -- pullU t@(Act d (DUALTreeU (u,_)))    = pack (act d u, t)
 -- pullU t@(Annot _ (DUALTreeU (u, _))) = pack (u, t)
