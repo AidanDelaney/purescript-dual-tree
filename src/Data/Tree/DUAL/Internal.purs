@@ -13,12 +13,13 @@ where
 
 import Prelude
 
+import Data.List (List(..))
 import Data.List.NonEmpty (NonEmptyList(..), fromList, singleton)
 import Data.Tuple (Tuple(..), fst)
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Action (class Action)
 import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.NonEmpty (fold1, (:|))
+import Data.NonEmpty (fold1, foldMap1, (:|))
 import Data.Functor (class Functor, map)
 import Data.Semigroup.Foldable (class Foldable1, foldMap1Default)
 
@@ -29,9 +30,9 @@ data DUALTreeNE d u a l
   | Concat (NonEmptyList (DUALTreeU d u a l))
                       -- ^ n-way branch, containing a /non-empty/ list
                       --   of subtrees.
-  | Act    d (DUALTreeU d u a l)
+--  | Act    d (DUALTreeU d u a l)
                       -- ^ @d@ annotation
-  | Annot  a (DUALTreeU d u a l)
+--  | Annot  a (DUALTreeU d u a l)
                       -- ^ Internal data value
 
 derive instance ftorDUALTreeNE :: Functor (DUALTreeNE d u a)
@@ -115,9 +116,10 @@ getU t = map fst $ nonEmpty t
 
 -- | \"Pull\" the root @u@ annotation out into a tuple.
 pullU :: forall d u a l. Semigroup u => Action d u => DUALTreeNE d u a l -> DUALTreeU d u a l
-pullU (Leaf u l) = wrap $ Tuple (u  (Leaf u l))
-pullU (Leaf u l) = pack $ Tuple (u  (Leaf u l))
-pullU (LeafU u)  = pack $ Tuple (u  (LeafU u))
--- pullU (Concat ts)                  = pack (fold1 . NEL.map (fst . unpack) $ (Concat ts), t)
+pullU (Leaf u l) = wrap $ Tuple u  (Leaf u l)
+pullU (LeafU u)  = wrap $ Tuple u  (LeafU u)
+pullU (Concat (NonEmptyList ts))= wrap $ Tuple u' (Concat (NonEmptyList ts))
+                     where
+                       u' = foldMap1 (fst <<< unwrap) ts
 -- pullU t@(Act d (DUALTreeU (u,_)))    = pack (act d u, t)
 -- pullU t@(Annot _ (DUALTreeU (u, _))) = pack (u, t)
