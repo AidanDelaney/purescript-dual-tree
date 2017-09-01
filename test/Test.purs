@@ -34,7 +34,9 @@ instance actionD :: Action D Int where
 instance actionDU :: Action D U where
   act (Multiplicative i) (Additive j) = Additive (i * j)
 
-newtype DT = DT (DUALTree D U Boolean Boolean)
+-- FIXME: Why is this necessary? `D` is a synonmym of `Multiplicative` which is a `Semigroup`
+instance semigroupD :: Semigroup D where
+  append (Multiplicative x) (Multiplicative y) = Multiplicative (x*y)
 
 data DUALTreeExpr d u a l =
     EEmpty
@@ -57,47 +59,30 @@ mkD = Multiplicative <$> (arbitrary :: Gen Int)
 instance arbitraryD :: Arbitrary D where
   arbitrary = mkD
 
-newtype PairUD = PairUD (Tuple U (DUALTreeNE D U Boolean Boolean))
+type T = DUALTree D U Boolean Boolean
 
-unwrapPairUD :: PairUD -> DUALTreeU D U Boolean Boolean
-unwrapPairUD (PairUD t) = wrap t
+-- A Wrapper for type T so we can make arbitrary instances of it
+newtype DT = DT T
 
-instance arbitraryDNE :: Arbitrary PairUD where
-  arbitrary = PairUD <$> (Tuple <$> u <*> t)
-              where
-                u = mkU
-                l = arbitrary :: Gen Boolean
-                t = oneOf $ NonEmpty (LeafU <$> u) [(LeafU <$> u), (Leaf <$> u <*> l)]
-
-newtype DTU = DTU (DUALTreeU D U Boolean Boolean)
-
-instance arbitraryDTU :: Arbitrary DTU where
-  arbitrary = (DTU <<< unwrapPairUD) <$> arbitrary :: Gen PairUD
-
--- This constant unwrapping sucks.  I don't want to bother making these types instance of
--- Newtype, but we can't just make an instance of DualTree here as we're not in the same module.
-unwrapDTU :: forall d u a l. DTU -> Maybe (DUALTreeU D U Boolean Boolean)
-unwrapDTU (DTU d) = Just d
-
-instance arbitraryDT :: Arbitrary DT where
-  arbitrary = DT <<< wrap <<< unwrapDTU <$> arbitrary :: Gen DTU
-
-mkLeaf :: forall d a. Gen (DUALTreeExpr d U a Int)
-mkLeaf = oneOf $ NonEmpty l [l, lu]
+mkLeaf :: forall d u a l. Gen u -> Gen l -> Gen (DUALTreeExpr d u a l)
+mkLeaf genU genL = oneOf $ NonEmpty l [l, lu]
   where
-    l = (lift2 ELeaf mkU (arbitrary :: Gen Int))
-    lu = (ELeafU <$> mkU)
+    l = lift2 ELeaf genU genL
+    lu = ELeafU <$> genU
 
-mkTreeExpr :: forall d a. Int -> Gen (DUALTreeExpr d U a Int)
-mkTreeExpr 0 = mkLeaf
+mkLeafT :: forall d a. Gen (DUALTreeExpr d U a Boolean)
+mkLeafT = mkLeaf mkU (arbitrary :: Gen Boolean)
+
+mkTreeExpr :: forall d a. Int -> Gen (DUALTreeExpr d U a Boolean)
+mkTreeExpr 0 = mkLeafT
 mkTreeExpr n = do
                  len <- chooseInt 1 n
-                 ls <- fromList <$> listOf len mkLeaf -- (mkTreeExpr (len-1))
+                 ls <- fromList <$> listOf len mkLeafT -- (mkTreeExpr (len-1))
                  case ls of
                    (Just xs) -> pure $ EConcat xs
-                   Nothing -> mkLeaf
+                   Nothing -> mkLeafT
 
-buildTree :: forall d a l. Semigroup d => DUALTreeExpr d U a l -> DUALTree d U a l
+buildTree :: forall d u a l. Semigroup d => Semigroup u => DUALTreeExpr d u a l -> DUALTree d u a l
 buildTree EEmpty       = empty
 buildTree (ELeaf u l)  = leaf u l
 buildTree (ELeafU u)   = leafU u
@@ -105,9 +90,11 @@ buildTree (EConcat (NonEmptyList ts)) =  foldMap1 buildTree ts
 --buildTree (EAct d t)   = applyD d (buildTree t)
 --buildTree (EAnnot a t) = annot a (buildTree t)
 
-
---instance arbitraryTree :: Arbitrary T where
---  arbitrary = map buildTree (mkTreeExpr 0)
+instance arbitraryDT :: Arbitrary DT where
+  arbitrary = do
+                i <- chooseInt 0 4 -- manually control bounds rather than use sized
+                te <- mkTreeExpr i
+                pure $ DT (buildTree te)
 
 prop_leaf_u :: Int -> Boolean
 prop_leaf_u u = getU (leaf u unit) == Just u
@@ -116,7 +103,7 @@ prop_leafU_u :: U -> Boolean
 prop_leafU_u u = getU (leafU u) == Just u
 
 prop_applyUpre :: U -> DT -> Boolean
-prop_applyUpre u (DT t) = getU (applyUpre u t) == Just u -- Just (u `append` fromMaybe empty (getU t))
+prop_applyUpre u (DT t) = getU (applyUpre u t) == Just (u `append` fromMaybe u (getU t))
 
 --prop_applyUpost :: U -> T -> Boolean
 --prop_applyUpost u t = getU (applyUpost u t) == Just (fromMaybe mempty (getU t) `append` u)
