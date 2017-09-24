@@ -70,10 +70,10 @@ mkLeaf genU genL = oneOf $ NonEmpty l [l, lu]
     l = lift2 ELeaf genU genL
     lu = ELeafU <$> genU
 
-mkLeafT :: forall d a. Gen (DUALTreeExpr d U a Boolean)
+mkLeafT :: forall a. Gen (DUALTreeExpr D U a Boolean)
 mkLeafT = mkLeaf mkU (arbitrary :: Gen Boolean)
 
-mkConcatExpr :: forall d a. Int ->  Gen (DUALTreeExpr d U a Boolean)
+mkConcatExpr :: forall a. Int ->  Gen (DUALTreeExpr D U a Boolean)
 mkConcatExpr len = do
                      ls <- fromList <$> listOf len (mkTreeExpr (len-1))
                      case ls of
@@ -81,13 +81,14 @@ mkConcatExpr len = do
                        Nothing -> mkLeafT -- Got to make something sane here
 
 mkActExpr :: forall a. Gen (DUALTreeExpr D U a Boolean)
-mkActExpr = EAct <$> mkD <*> (mkTreeExpr 0) -- FIXME: Go deeper
+mkActExpr = EAct <$> mkD <*> mkLeafT -- FIXME: Go deeper
 
-mkTreeExpr :: forall d a. Int -> Gen (DUALTreeExpr d U a Boolean)
+mkTreeExpr :: forall a. Int -> Gen (DUALTreeExpr D U a Boolean)
 mkTreeExpr 0 = mkLeafT
 mkTreeExpr n = do
                  len <- chooseInt 1 n
-                 mkConcatExpr len
+                 oneOf $ NonEmpty mkActExpr [mkConcatExpr len, mkActExpr]
+
 
 buildTree :: forall d u a l. Semigroup d => Semigroup u => Action d u => DUALTreeExpr d u a l -> DUALTree d u a l
 buildTree EEmpty       = empty
