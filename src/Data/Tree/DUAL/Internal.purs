@@ -4,7 +4,7 @@ module Data.Tree.DUAL.Internal
            DUALTreeNE(..), DUALTreeU(..), DUALTree(..)
 
            -- * Constructing DUAL-trees
-           , empty, leaf, leafU --, annot, applyD
+           , empty, leaf, leafU, applyD --, annot
 
            -- * Accessors and eliminators
            , nonEmpty, getU, applyUpre
@@ -18,10 +18,11 @@ import Data.List.NonEmpty (NonEmptyList(..), fromList, singleton)
 import Data.Tuple (Tuple(..), fst)
 import Data.Maybe (Maybe(..))
 import Data.Monoid.Action (class Action, act)
-import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Newtype (class Newtype, unwrap, wrap, over)
 import Data.NonEmpty (fold1, foldMap1, (:|))
 import Data.Functor (class Functor, map)
 import Data.Semigroup.Foldable (class Foldable1, foldMap1Default)
+import Data.Profunctor.Strong ((***))
 
 -- | /Non-empty/ DUAL-trees.
 data DUALTreeNE d u a l
@@ -41,7 +42,14 @@ derive instance eqDUALTreeNE :: (Eq d, Eq u, Eq a, Eq l) => Eq (DUALTreeNE d u a
 instance semigroupDUALTreeNE :: (Action d u, Semigroup u) => Semigroup (DUALTreeNE d u a l) where
   append t1 t2   = fold1 (t1 :| (singleton t2))
 
---sconcat = Concat . map pullU
+newtype DAct d = DAct { unDAct :: d }
+instance ntypeDAct :: Newtype (DAct d) d where
+  unwrap (DAct r) = r.unDAct
+  wrap d = DAct { unDAct : d }
+
+instance actionDAct :: (Semigroup d, Semigroup u, Action d u) => Action (DAct d) (DUALTreeNE d u a l) where
+  act (DAct d) (Act d' t) = Act (d.unDAct <> d') t
+  act (DAct d) t          = Act d.unDAct (pullU t)
 
 --instance foldableDUALTreeNE :: Foldable1 (DUALTreeNE d u a l) where
 --  fold1 = Concat . map pullU
@@ -60,6 +68,9 @@ instance ntypeDUALTreeU :: Newtype (DUALTreeU d u a l) (Tuple u  (DUALTreeNE d u
 instance semigroupDUALTreeU :: Semigroup (DUALTreeU d u a l) where
   append t1 t2   = fold1 (t1 :| (singleton t2))
 
+instance actionDActDUALTreeU :: (Semigroup d, Semigroup u, Action d u) => Action (DAct d) (DUALTreeU d u a l) where
+  act d = over wrap (act (unwrap d) *** act d)
+
 newtype DUALTree d u a l = DUALTree { unDUALTree :: Maybe (DUALTreeU d u a l) }
 
 derive instance ftorDUALTree :: Functor (DUALTree d u a)
@@ -71,6 +82,13 @@ instance ntypeDUALTree :: Newtype (DUALTree d u a l) (Maybe (DUALTreeU d u a l))
 
 instance semigroupDUALTree :: Semigroup (DUALTree d u a l) where
   append t1 t2   = fold1 (t1 :| (singleton t2))
+
+-- | Apply a @d@ annotation at the root of a tree.  Semantically, all
+--   @u@ annotations are transformed by the action of @d@, although
+--   operationally @act@ incurs only a constant amount of work.
+instance actionDActDUALTree :: (Semigroup d, Semigroup u, Action d u)
+    => Action (DAct d) (DUALTree d u a l) where
+  act = over wrap <<< map <<< act
 
 --  deriving ( Functor, Semigroup, Typeable, Show, Eq )
 
@@ -98,6 +116,11 @@ leafU u = DUALTree {unDUALTree: dtu}
 applyUpre :: forall d u a l. Semigroup u => Action d u => u -> DUALTree d u a l -> DUALTree d u a l
 applyUpre u t = append (leafU u) t
 
+
+-- | Apply a @d@ annotation at the root of a tree, transforming all
+--   @u@ annotations by the action of @d@.
+applyD :: forall d u a l. Semigroup d => Semigroup u => Action d u => d -> DUALTree d u a l -> DUALTree d u a l
+applyD d = act $ DAct { unDAct : d }
 
 -- | Decompose a DUAL-tree into either @Nothing@ (if empty) or a
 --   top-level cached @u@ annotation paired with a non-empty
