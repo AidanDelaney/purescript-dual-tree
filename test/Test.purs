@@ -12,7 +12,7 @@ import           Data.NonEmpty(NonEmpty(..), (:|), foldMap1)
 import           Data.Tuple (Tuple(..))
 import           Data.Semiring(class Semiring)
 import           Control.Apply (lift2)
-import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree(..), DUALTreeU(..), DUALTreeNE(..), applyUpre, applyD)
+import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree(..), DUALTreeU(..), DUALTreeNE(..), applyUpre, applyD, annot)
 import           Test.QuickCheck.Arbitrary (arbitrary, class Arbitrary)
 import           Test.QuickCheck.Gen (Gen, chooseInt, oneOf, listOf, sized, uniform)
 import           Test.QuickCheck (quickCheck)
@@ -44,7 +44,7 @@ data DUALTreeExpr d u a l =
   | ELeafU u
   | EConcat (NonEmptyList (DUALTreeExpr d u a l))
   | EAct d (DUALTreeExpr d u a l)
---  | EAnnot a (DUALTreeExpr d u a l)
+  | EAnnot a (DUALTreeExpr d u a l)
 --  deriving (Show, Typeable)
 
 mkU :: Gen U
@@ -70,24 +70,27 @@ mkLeaf genU genL = oneOf $ NonEmpty l [l, lu]
     l = lift2 ELeaf genU genL
     lu = ELeafU <$> genU
 
-mkLeafT :: forall a. Gen (DUALTreeExpr D U a Boolean)
+mkLeafT :: Gen (DUALTreeExpr D U Boolean Boolean)
 mkLeafT = mkLeaf mkU (arbitrary :: Gen Boolean)
 
-mkConcatExpr :: forall a. Int ->  Gen (DUALTreeExpr D U a Boolean)
+mkConcatExpr :: Int ->  Gen (DUALTreeExpr D U Boolean Boolean)
 mkConcatExpr len = do
                      ls <- fromList <$> listOf len (mkTreeExpr (len-1))
                      case ls of
                        (Just xs) -> pure $ EConcat xs
                        Nothing -> mkLeafT -- Got to make something sane here
 
-mkActExpr :: forall a. Gen (DUALTreeExpr D U a Boolean)
+mkActExpr :: Gen (DUALTreeExpr D U Boolean Boolean)
 mkActExpr = EAct <$> mkD <*> mkLeafT -- FIXME: Go deeper
 
-mkTreeExpr :: forall a. Int -> Gen (DUALTreeExpr D U a Boolean)
+mkAnnotExpr :: Gen (DUALTreeExpr D U Boolean Boolean)
+mkAnnotExpr = EAnnot <$> (arbitrary :: Gen Boolean) <*> mkLeafT -- FIXME: go deeper
+
+mkTreeExpr ::  Int -> Gen (DUALTreeExpr D U Boolean Boolean)
 mkTreeExpr 0 = mkLeafT
 mkTreeExpr n = do
                  len <- chooseInt 1 n
-                 oneOf $ NonEmpty mkActExpr [mkConcatExpr len, mkActExpr]
+                 oneOf $ NonEmpty mkActExpr [mkConcatExpr len, mkActExpr, mkAnnotExpr]
 
 
 buildTree :: forall d u a l. Semigroup d => Semigroup u => Action d u => DUALTreeExpr d u a l -> DUALTree d u a l
@@ -96,7 +99,7 @@ buildTree (ELeaf u l)  = leaf u l
 buildTree (ELeafU u)   = leafU u
 buildTree (EConcat (NonEmptyList ts)) =  foldMap1 buildTree ts
 buildTree (EAct d t)   = applyD d (buildTree t)
---buildTree (EAnnot a t) = annot a (buildTree t)
+buildTree (EAnnot a t) = annot a (buildTree t)
 
 {-
  -- FIXME: I'd like to be able to use sized

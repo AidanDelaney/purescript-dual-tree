@@ -4,7 +4,7 @@ module Data.Tree.DUAL.Internal
            DUALTreeNE(..), DUALTreeU(..), DUALTree(..)
 
            -- * Constructing DUAL-trees
-           , empty, leaf, leafU, applyD --, annot
+           , empty, leaf, leafU, annot, applyD
 
            -- * Accessors and eliminators
            , nonEmpty, getU, applyUpre
@@ -150,3 +150,9 @@ pullU (Act d dt)   = wrap $ Tuple (act d u) (Act d dt)
 pullU (Annot a dt) = wrap $ Tuple  u (Annot a dt)
                                              where
                                                u = fst $ unwrap dt
+
+-- | Add an internal data value at the root of a tree.  Note that this
+--   only works on /non-empty/ trees; on empty trees this function is
+--   the identity.
+annot :: forall d u a l. Semigroup u => Action d u => a -> DUALTree d u a l -> DUALTree d u a l
+annot a = (over wrap <<< map) (pullU <<< Annot a)
