@@ -37,6 +37,8 @@ instance monoidU :: Monoid U where
 
 newtype D = M { d :: Multiplicative Int }
 
+derive instance eqD :: Eq (D)
+
 instance newtypeU :: Newtype D (Multiplicative Int) where
   wrap mi = M { d : mi }
   unwrap (M r) = r.d
@@ -142,9 +144,27 @@ prop_applyUpre u (DT t) = getU (applyUpre u t) == Just (u `append` fromMaybe mem
 prop_applyUpost :: U -> DT -> Boolean
 prop_applyUpost u (DT t) = getU (applyUpost u t) == Just (fromMaybe mempty (getU t) `append` u)
 
+--------------------------------------------------
+-- Monoid laws
+--------------------------------------------------
+
+prop_mempty_idL :: DT -> Boolean
+prop_mempty_idL (DT t) = mempty <> t == t
+
+prop_mempty_idR :: DT -> Boolean
+prop_mempty_idR (DT t) = t <> mempty == t
+
+--infix 4 ===
+--t1 === t2 = flatten t1 == flatten t2
+
+-- mappend is associative up to flattening.
+--prop_mappend_assoc :: T -> T -> T -> Bool
+--prop_mappend_assoc t1 t2 t3 = (t1 <> t2) <> t3 === t1 <> (t2 <> t3)
 
 main = do
   quickCheck prop_leaf_u
   quickCheck prop_leafU_u
   quickCheck prop_applyUpre
   quickCheck prop_applyUpost
+  quickCheck prop_mempty_idL
+  quickCheck prop_mempty_idR

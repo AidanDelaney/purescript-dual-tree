@@ -17,6 +17,7 @@ import Data.List (List(..))
 import Data.List.NonEmpty (NonEmptyList(..), fromList, singleton)
 import Data.Tuple (Tuple(..), fst)
 import Data.Maybe (Maybe(..))
+import Data.Monoid (class Monoid, mempty)
 import Data.Monoid.Action (class Action, act)
 import Data.Newtype (class Newtype, unwrap, wrap, over)
 import Data.NonEmpty (fold1, foldMap1, (:|))
@@ -82,6 +83,9 @@ instance ntypeDUALTree :: Newtype (DUALTree d u a l) (Maybe (DUALTreeU d u a l))
 
 instance semigroupDUALTree :: Semigroup (DUALTree d u a l) where
   append t1 t2   = fold1 (t1 :| (singleton t2))
+
+instance monoidDUALTree :: Monoid (DUALTree d u a l) where
+  mempty = DUALTree {unDUALTree : mempty}
 
 -- | Apply a @d@ annotation at the root of a tree.  Semantically, all
 --   @u@ annotations are transformed by the action of @d@, although
