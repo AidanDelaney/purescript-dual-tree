@@ -97,17 +97,17 @@ mkConcatExpr len = do
                        (Just xs) -> pure $ EConcat xs
                        Nothing -> mkLeafT -- Got to make something sane here
 
-mkActExpr :: Gen (DUALTreeExpr D U Boolean Boolean)
-mkActExpr = EAct <$> mkD <*> mkLeafT -- FIXME: Go deeper
+mkActExpr :: Int -> Gen (DUALTreeExpr D U Boolean Boolean)
+mkActExpr len = EAct <$> mkD <*> mkTreeExpr (len - 1)
 
-mkAnnotExpr :: Gen (DUALTreeExpr D U Boolean Boolean)
-mkAnnotExpr = EAnnot <$> (arbitrary :: Gen Boolean) <*> mkLeafT -- FIXME: go deeper
+mkAnnotExpr :: Int -> Gen (DUALTreeExpr D U Boolean Boolean)
+mkAnnotExpr len = EAnnot <$> (arbitrary :: Gen Boolean) <*> mkTreeExpr (len - 1)
 
 mkTreeExpr ::  Int -> Gen (DUALTreeExpr D U Boolean Boolean)
 mkTreeExpr 0 = mkLeafT
 mkTreeExpr n = do
                  len <- chooseInt 1 n
-                 oneOf $ NonEmpty mkActExpr [mkConcatExpr len, mkActExpr, mkAnnotExpr]
+                 oneOf $ NonEmpty (mkActExpr 0) [mkConcatExpr len, mkActExpr len, mkAnnotExpr len]
 
 
 buildTree :: forall d u a l. Semigroup d => Semigroup u => Action d u => DUALTreeExpr d u a l -> DUALTree d u a l
