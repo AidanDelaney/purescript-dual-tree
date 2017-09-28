@@ -1,9 +1,10 @@
 module Data.Tree.DUAL.Test where
 
 import           Prelude --(class Semigroup, unit, ($), (<$>), (==), append)
+import           Data.Monoid (class Monoid, mempty)
 import           Data.Monoid.Action (class Action)
---import           Data.Monoid.Additive (Additive(..))
---import           Data.Monoid.Multiplicative (Multiplicative(..))
+import           Data.Monoid.Additive (Additive(..))
+import           Data.Monoid.Multiplicative (Multiplicative(..))
 import           Data.Maybe(Maybe(..), fromMaybe)
 import           Data.Newtype (class Newtype, unwrap, wrap)
 import           Data.List.Lazy (replicate)
@@ -12,31 +13,45 @@ import           Data.NonEmpty(NonEmpty(..), (:|), foldMap1)
 import           Data.Tuple (Tuple(..))
 import           Data.Semiring(class Semiring)
 import           Control.Apply (lift2)
-import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree(..), DUALTreeU(..), DUALTreeNE(..), applyUpre, applyD, annot)
+import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree(..), DUALTreeU(..), DUALTreeNE(..), applyUpre, applyUpost, applyD, annot)
 import           Test.QuickCheck.Arbitrary (arbitrary, class Arbitrary)
 import           Test.QuickCheck.Gen (Gen, chooseInt, oneOf, listOf, sized, uniform)
 import           Test.QuickCheck (quickCheck)
 
-data U = Additive Int
+newtype U = A { u :: Additive Int }
+
+instance ntypeU :: Newtype U (Additive Int) where
+  wrap t = A { u : t}
+  unwrap (A r) = r.u
+
+instance semigroupU :: Semigroup U where
+  append a b = wrap $ unwrap a `append` unwrap b
+
 derive instance eqU :: Eq (U)
 
-instance semigroupU :: Semigroup (U) where
-  append (Additive a) (Additive b) = Additive (a + b)
+instance monoidU :: Monoid U where
+  mempty = wrap mempty
 
-instance actionU :: Action U Int where
-  act (Additive i) s = i + s
+--instance actionU :: Action U Int where
+--  act (Additive i) s = i + s
 
-newtype D = Multiplicative Int
+newtype D = M { d :: Multiplicative Int }
 
-instance actionD :: Action D Int where
-  act (Multiplicative i) s = i * s
+instance newtypeU :: Newtype D (Multiplicative Int) where
+  wrap mi = M { d : mi }
+  unwrap (M r) = r.d
+
+--instance actionD :: Action D Int where
+--  act (Multiplicative i) s = i * s
 
 instance actionDU :: Action D U where
-  act (Multiplicative i) (Additive j) = Additive (i * j)
+  act m s = wrap $ Additive (i * j)
+                                          where
+                                            (Multiplicative i) = unwrap m
+                                            (Additive j) = unwrap s
 
--- FIXME: Why is this necessary? `D` is a synonmym of `Multiplicative` which is a `Semigroup`
 instance semigroupD :: Semigroup D where
-  append (Multiplicative x) (Multiplicative y) = Multiplicative (x*y)
+  append a b = wrap $ unwrap a `append` unwrap b
 
 data DUALTreeExpr d u a l =
     EEmpty
@@ -48,16 +63,16 @@ data DUALTreeExpr d u a l =
 --  deriving (Show, Typeable)
 
 mkU :: Gen U
-mkU = Additive <$> (arbitrary :: Gen Int)
+mkU = wrap <$> (Additive <$> (arbitrary :: Gen Int))
 
 instance arbitraryU :: Arbitrary U where
   arbitrary = mkU
 
 mkD :: Gen D
-mkD = Multiplicative <$> (arbitrary :: Gen Int)
+mkD = wrap <$> (Multiplicative <$> (arbitrary :: Gen Int))
 
-instance arbitraryD :: Arbitrary D where
-  arbitrary = mkD
+--instance arbitraryD :: Arbitrary D where
+--  arbitrary = mkD
 
 type T = DUALTree D U Boolean Boolean
 
@@ -122,13 +137,14 @@ prop_leafU_u :: U -> Boolean
 prop_leafU_u u = getU (leafU u) == Just u
 
 prop_applyUpre :: U -> DT -> Boolean
-prop_applyUpre u (DT t) = getU (applyUpre u t) == Just (u `append` fromMaybe u (getU t))
+prop_applyUpre u (DT t) = getU (applyUpre u t) == Just (u `append` fromMaybe mempty (getU t))
 
---prop_applyUpost :: U -> T -> Boolean
---prop_applyUpost u t = getU (applyUpost u t) == Just (fromMaybe mempty (getU t) `append` u)
+prop_applyUpost :: U -> DT -> Boolean
+prop_applyUpost u (DT t) = getU (applyUpost u t) == Just (fromMaybe mempty (getU t) `append` u)
 
 
 main = do
   quickCheck prop_leaf_u
   quickCheck prop_leafU_u
   quickCheck prop_applyUpre
+  quickCheck prop_applyUpost

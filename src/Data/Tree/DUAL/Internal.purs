@@ -7,7 +7,7 @@ module Data.Tree.DUAL.Internal
            , empty, leaf, leafU, annot, applyD
 
            -- * Accessors and eliminators
-           , nonEmpty, getU, applyUpre
+           , nonEmpty, getU, applyUpre, applyUpost
        )
 where
 
@@ -116,6 +116,11 @@ leafU u = DUALTree {unDUALTree: dtu}
 applyUpre :: forall d u a l. Semigroup u => Action d u => u -> DUALTree d u a l -> DUALTree d u a l
 applyUpre u t = append (leafU u) t
 
+-- | Add a @u@ annotation to the root, combining it (on the right) with
+--   the existing cached @u@ annotation.  This function is provided
+--   just for convenience; @applyUpost u t = t \<\> 'leafU' u@.
+applyUpost :: forall d u a l. Semigroup u => Action d u => u -> DUALTree d u a l -> DUALTree d u a l
+applyUpost u t = t <> leafU u
 
 -- | Apply a @d@ annotation at the root of a tree, transforming all
 --   @u@ annotations by the action of @d@.
