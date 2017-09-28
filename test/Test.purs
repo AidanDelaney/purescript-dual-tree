@@ -32,9 +32,6 @@ derive instance eqU :: Eq (U)
 instance monoidU :: Monoid U where
   mempty = wrap mempty
 
---instance actionU :: Action U Int where
---  act (Additive i) s = i + s
-
 newtype D = M { d :: Multiplicative Int }
 
 derive instance eqD :: Eq (D)
@@ -42,9 +39,6 @@ derive instance eqD :: Eq (D)
 instance newtypeU :: Newtype D (Multiplicative Int) where
   wrap mi = M { d : mi }
   unwrap (M r) = r.d
-
---instance actionD :: Action D Int where
---  act (Multiplicative i) s = i * s
 
 instance actionDU :: Action D U where
   act m s = wrap $ Additive (i * j)
@@ -62,7 +56,6 @@ data DUALTreeExpr d u a l =
   | EConcat (NonEmptyList (DUALTreeExpr d u a l))
   | EAct d (DUALTreeExpr d u a l)
   | EAnnot a (DUALTreeExpr d u a l)
---  deriving (Show, Typeable)
 
 mkU :: Gen U
 mkU = wrap <$> (Additive <$> (arbitrary :: Gen Int))
@@ -72,9 +65,6 @@ instance arbitraryU :: Arbitrary U where
 
 mkD :: Gen D
 mkD = wrap <$> (Multiplicative <$> (arbitrary :: Gen Int))
-
---instance arbitraryD :: Arbitrary D where
---  arbitrary = mkD
 
 type T = DUALTree D U Boolean Boolean
 

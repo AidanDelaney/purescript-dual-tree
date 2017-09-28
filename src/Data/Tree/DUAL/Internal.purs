@@ -137,10 +137,6 @@ applyD d = act $ DAct { unDAct : d }
 nonEmpty :: forall d u a l. (DUALTree d u a l) -> Maybe (Tuple u (DUALTreeNE d u a l))
 nonEmpty t = map unwrap $ unwrap t
 
-{-nonEmpty (DUALTree t) = case t.unDUALTree of
-                          Nothing -> Nothing
-                          Just (DUALTreeU r) -> Just r.unDUALTreeU -}
-
 -- | Get the @u@ annotation at the root, or @Nothing@ if the tree is
 --   empty.
 getU :: forall d u a l. DUALTree d u a l -> Maybe u
