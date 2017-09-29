@@ -15,8 +15,8 @@ import Prelude
 
 import Data.List (List(..))
 import Data.List.NonEmpty (NonEmptyList(..), fromList, singleton)
-import Data.Tuple (Tuple(..), fst)
-import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..), fst, snd)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Monoid.Action (class Action, act)
 import Data.Newtype (class Newtype, unwrap, wrap, over)
@@ -161,3 +161,57 @@ pullU (Annot a dt) = wrap $ Tuple  u (Annot a dt)
 --   the identity.
 annot :: forall d u a l. Semigroup u => Action d u => a -> DUALTree d u a l -> DUALTree d u a l
 annot a = (over wrap <<< map) (pullU <<< Annot a)
+
+------------------------------------------------------------
+-- Folds
+------------------------------------------------------------
+-- | Fold for non-empty DUAL-trees.
+foldDUALNE :: forall d u a l r. Monoid d
+           => (d -> l -> r) -- ^ Process a leaf datum along with the
+                            --   accumulation of @d@ values along the
+                            --   path from the root
+           -> r             -- ^ Replace @LeafU@ nodes
+           -> (NonEmptyList r -> r)  -- ^ Combine results at a branch node
+           -> (d -> r -> r)      -- ^ Process an internal d node
+           -> (a -> r -> r)      -- ^ Process an internal datum
+           -> DUALTreeNE d u a l -> r
+foldDUALNE  = foldDUALNE' Nothing
+  where
+    foldDUALNE' dacc lf _   _   _    _   (Leaf _ l)  = lf (maybe mempty id dacc) l
+    foldDUALNE' _    _  lfU _   _    _   (LeafU _)   = lfU
+    foldDUALNE' dacc lf lfU con down ann (Concat ts)
+      = con (map (foldDUALNE' dacc lf lfU con down ann <<< snd <<< unwrap) ts)
+    foldDUALNE' dacc lf lfU con down ann (Act d t)
+      = down d (foldDUALNE' (dacc <> (Just d)) lf lfU con down ann <<< snd <<< unwrap $ t)
+    foldDUALNE' dacc lf lfU con down ann (Annot a t)
+      = ann a (foldDUALNE' dacc lf lfU con down ann <<< snd <<< unwrap $ t)
+
+-- | Fold for DUAL-trees. It is given access to the internal and leaf
+--   data, internal @d@ values, and the accumulated @d@ values at each
+--   leaf.  It is also allowed to replace \"@u@-only\" leaves with a
+--   constant value.  In particular, however, it is /not/ given access
+--   to any of the @u@ annotations, the idea being that those are used
+--   only for /constructing/ trees.  If you do need access to @u@
+--   values, you can duplicate the values you need in the internal
+--   data nodes.
+--
+--   Be careful not to mix up the @d@ values at internal nodes with
+--   the @d@ values at leaves.  Each @d@ value at a leaf satisfies the
+--   property that it is the 'mconcat' of all internal @d@ values
+--   along the path from the root to the leaf.
+--
+--   The result is @Nothing@ if and only if the tree is empty.
+
+foldDUAL :: forall d u a l r. Monoid d
+         => (d -> l -> r)          -- ^ Process a leaf datum along with the
+                                   --   accumulation of @d@ values along the
+                                   --   path from the root
+         -> r                      -- ^ Replace @u@-only nodes
+         -> (NonEmptyList r -> r)      -- ^ Combine results at a branch node
+         -> (d -> r -> r)          -- ^ Process an internal d node
+         -> (a -> r -> r)          -- ^ Process an internal datum
+         -> DUALTree d u a l -> Maybe r
+foldDUAL _ _ _ _ _ (DUALTree { unDUALTree : Nothing })
+  = Nothing
+foldDUAL l u c d a (DUALTree { unDUALTree : Just p })
+  = Just $ foldDUALNE l u c d a ( snd <<< unwrap $ p)
