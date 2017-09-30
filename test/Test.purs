@@ -13,7 +13,7 @@ import           Data.NonEmpty(NonEmpty(..), (:|), foldMap1)
 import           Data.Tuple (Tuple(..))
 import           Data.Semiring(class Semiring)
 import           Control.Apply (lift2)
-import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree(..), DUALTreeU(..), DUALTreeNE(..), applyUpre, applyUpost, applyD, annot)
+import           Data.Tree.DUAL.Internal (empty, leaf, leafU, getU, DUALTree(..), DUALTreeU(..), DUALTreeNE(..), applyUpre, applyUpost, applyD, annot, flatten)
 import           Test.QuickCheck.Arbitrary (arbitrary, class Arbitrary)
 import           Test.QuickCheck.Gen (Gen, chooseInt, oneOf, listOf, sized, uniform)
 import           Test.QuickCheck (quickCheck)
@@ -39,6 +39,9 @@ derive instance eqD :: Eq (D)
 instance newtypeU :: Newtype D (Multiplicative Int) where
   wrap mi = M { d : mi }
   unwrap (M r) = r.d
+
+instance monoidD :: Monoid D where
+  mempty = wrap mempty
 
 instance actionDU :: Action D U where
   act m s = wrap $ Additive (i * j)
@@ -144,12 +147,13 @@ prop_mempty_idL (DT t) = mempty <> t == t
 prop_mempty_idR :: DT -> Boolean
 prop_mempty_idR (DT t) = t <> mempty == t
 
---infix 4 ===
---t1 === t2 = flatten t1 == flatten t2
+flatEq :: forall d u a l. Eq d => Monoid d => Eq u => Eq a => Eq l => DUALTree d u a l -> DUALTree d u a l -> Boolean
+flatEq t1 t2 = flatten t1 == flatten t2
+infix 4 flatEq as ===
 
 -- mappend is associative up to flattening.
---prop_mappend_assoc :: T -> T -> T -> Bool
---prop_mappend_assoc t1 t2 t3 = (t1 <> t2) <> t3 === t1 <> (t2 <> t3)
+prop_mappend_assoc :: DT -> DT -> DT -> Boolean
+prop_mappend_assoc (DT t1) (DT t2) (DT t3) = (t1 <> t2) <> t3 === t1 <> (t2 <> t3)
 
 main = do
   quickCheck prop_leaf_u
@@ -158,3 +162,4 @@ main = do
   quickCheck prop_applyUpost
   quickCheck prop_mempty_idL
   quickCheck prop_mempty_idR
+  quickCheck prop_mappend_assoc

@@ -8,15 +8,18 @@ module Data.Tree.DUAL.Internal
 
            -- * Accessors and eliminators
            , nonEmpty, getU, applyUpre, applyUpost
+
+           -- * Accessors and eliminators
+           , flatten
        )
 where
 
 import Prelude
 
-import Data.List (List(..))
-import Data.List.NonEmpty (NonEmptyList(..), fromList, singleton)
+import Data.List (List(..), concat)
+import Data.List.NonEmpty (NonEmptyList(..), fromList, toList, singleton)
 import Data.Tuple (Tuple(..), fst, snd)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Monoid.Action (class Action, act)
 import Data.Newtype (class Newtype, unwrap, wrap, over)
@@ -215,3 +218,15 @@ foldDUAL _ _ _ _ _ (DUALTree { unDUALTree : Nothing })
   = Nothing
 foldDUAL l u c d a (DUALTree { unDUALTree : Just p })
   = Just $ foldDUALNE l u c d a ( snd <<< unwrap $ p)
+
+-- | A specialized fold provided for convenience: flatten a tree into
+--   a list of leaves along with their @d@ annotations, ignoring
+--   internal data values.
+flatten :: forall d u a l. Monoid d => DUALTree d u a l -> List (Tuple l d)
+flatten = fromMaybe Nil
+        <<< foldDUAL
+            (\d l -> Cons (Tuple l d) (Nil)) -- Fixme: can we avoid concating these singleton lists?
+            Nil
+            (concat <<< toList)
+            (flip const)
+            (const id)
