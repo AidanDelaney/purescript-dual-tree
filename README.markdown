@@ -20,3 +20,7 @@ To install,
     bower install
     npm run build
 ```
+
+## Changelog
+
+  * v0.0.1 Initial release for use in higher-level libraries.  Expect significant change.
