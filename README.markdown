@@ -23,4 +23,5 @@ To install,
 
 ## Changelog
 
+  * v0.0.2 Updated bower metadata and made component public.
   * v0.0.1 Initial release for use in higher-level libraries.  Expect significant change.
