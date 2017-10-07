@@ -1,5 +1,4 @@
 {
-  "private": true,
   "name": "purescript-dual-tree",
   "ignore": [
     "**/.*",
@@ -17,5 +16,13 @@
       , "purescript-quickcheck": "^4.0.0"
       , "purescript-foldable-traversable": "^3.3.1"
       , "purescript-profunctor": "^3.2.0"
+  },
+  "authors": [
+      {"name": "Aidan Delaney", "email" : "aidan@ontologyengineering.org"}
+  ],
+  "repository": {
+        "type": "git"
+        , "url" : "https://github.com/aidandelaney/purescript-dual-tree"
   }
+    , "license" : "BSD-3-Clause"
 }
